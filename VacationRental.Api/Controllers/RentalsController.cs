@@ -1,43 +1,34 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
-using VacationRental.Api.Models;
+using VacationRental.Model.BiindingModels;
+using VacationRental.Model.ViewModels;
+using VacationRental.Services.Services.Contracts;
 
-namespace VacationRental.Api.Controllers
+namespace VacationRental.Api.Controllers;
+
+[Route("api/v1/rentals")]
+[ApiController]
+public class RentalsController : ControllerBase
 {
-    [Route("api/v1/rentals")]
-    [ApiController]
-    public class RentalsController : ControllerBase
+    private readonly IRentalService _rentalService;
+
+    public RentalsController(IRentalService rentalService)
     {
-        private readonly IDictionary<int, RentalViewModel> _rentals;
+        _rentalService = rentalService;
+    }
 
-        public RentalsController(IDictionary<int, RentalViewModel> rentals)
+    [HttpGet]
+    [Route("{rentalId:int}")]
+    public async Task<RentalViewModel> Get(int rentalId) => await _rentalService.GetRentalByIdAsync(rentalId);
+
+    [HttpPost]
+    public async Task<ResourceIdViewModel> Post(RentalBindingModel model)
+    {
+        var rental = await _rentalService.CreateRentalAsync(new RentalViewModel
         {
-            _rentals = rentals;
-        }
+            Units = model.Units
+        });
 
-        [HttpGet]
-        [Route("{rentalId:int}")]
-        public RentalViewModel Get(int rentalId)
-        {
-            if (!_rentals.ContainsKey(rentalId))
-                throw new ApplicationException("Rental not found");
-
-            return _rentals[rentalId];
-        }
-
-        [HttpPost]
-        public ResourceIdViewModel Post(RentalBindingModel model)
-        {
-            var key = new ResourceIdViewModel { Id = _rentals.Keys.Count + 1 };
-
-            _rentals.Add(key.Id, new RentalViewModel
-            {
-                Id = key.Id,
-                Units = model.Units
-            });
-
-            return key;
-        }
+        return rental;
     }
 }
