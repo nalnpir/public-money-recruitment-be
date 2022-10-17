@@ -34,7 +34,7 @@ public class Startup
         services.AddSingleton<IDictionary<int, Rental>>(new Dictionary<int, Rental>());
         services.AddSingleton<IDictionary<int, Booking>>(new Dictionary<int, Booking>());
         services.AddSingleton<IDictionary<int, PreparationDays>>(new Dictionary<int, PreparationDays>());
-        services.AddSingleton<CommonValidator>();
+        services.AddScoped<CommonValidator>();
         services.AddSingleton<BookingValidator>();
         services.AddSingleton<RentalValidator>();
 
