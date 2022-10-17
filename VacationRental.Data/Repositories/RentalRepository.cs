@@ -6,7 +6,7 @@ namespace VacationRental.Data.Repositories;
 
 public class RentalRepository : InMemoryRepository<Rental>, IRentalRepository
 {
-    public RentalRepository(IDictionary<int, Rental> entities, IMapper mapper) : base(entities, mapper)
+    public RentalRepository(IDictionary<int, Rental> entities) : base(entities)
     {
     }
 }

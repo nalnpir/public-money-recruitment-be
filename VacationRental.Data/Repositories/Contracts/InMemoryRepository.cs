@@ -1,17 +1,14 @@
-﻿using AutoMapper;
-using VacationRental.Data.Entities.Contracts;
+﻿using VacationRental.Data.Entities.Contracts;
 
 namespace VacationRental.Data.Repositories.Contracts;
 
 public abstract class InMemoryRepository<TEntity> : IRepository<TEntity> where TEntity : InMemoryEntity
 {
     protected readonly IDictionary<int, TEntity> Entities;
-    private readonly IMapper _mapper;
 
-    protected InMemoryRepository(IDictionary<int, TEntity> entities, IMapper mapper)
+    protected InMemoryRepository(IDictionary<int, TEntity> entities)
     {
         Entities = entities;
-        _mapper = mapper;
     }
     public Task<TEntity> GetByIdAsync(int id)
     {
@@ -41,15 +38,21 @@ public abstract class InMemoryRepository<TEntity> : IRepository<TEntity> where T
         return Task.FromResult(Entities[entity.Id]);
     }
 
-    public Task<TEntity> UpdateAsync(TEntity current, TEntity updated)
+    public Task<TEntity> UpdateAsync(TEntity updated)
     {
-        if (!Entities.ContainsKey(current.Id))
+        if (!Entities.ContainsKey(updated.Id))
             throw new KeyNotFoundException("Entity not found");
 
-        var result = _mapper.Map(updated, current);
+        Entities[updated.Id] = updated;
+        
+        return Task.FromResult(Entities[updated.Id]);
+    }
 
-        Entities[current.Id] = result;
-
-        return Task.FromResult(Entities[result.Id]);
+    public async Task UpdateBulkAsync(IEnumerable<TEntity> updatedEntities)
+    {
+        foreach (var entity in updatedEntities)
+        {
+            await UpdateAsync(entity);
+        }
     }
 }

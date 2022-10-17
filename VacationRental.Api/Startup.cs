@@ -33,11 +33,14 @@ public class Startup
 
         services.AddSingleton<IDictionary<int, Rental>>(new Dictionary<int, Rental>());
         services.AddSingleton<IDictionary<int, Booking>>(new Dictionary<int, Booking>());
+        services.AddSingleton<IDictionary<int, PreparationDays>>(new Dictionary<int, PreparationDays>());
         services.AddSingleton<CommonValidator>();
         services.AddSingleton<BookingValidator>();
+        services.AddSingleton<RentalValidator>();
 
         services.AddScoped<IBookingRepository, BookingRepository>();
         services.AddScoped<IRentalRepository, RentalRepository>();
+        services.AddScoped<IPreparationDaysRepository, PreparationDaysRepository>();
         services.AddScoped<IRentalService, RentalService>();
         services.AddScoped<ICalendarService, CalendarService>();
         services.AddScoped<IBookingService, BookingService>();
