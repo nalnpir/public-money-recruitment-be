@@ -4,7 +4,7 @@ using VacationRental.Model.ViewModels;
 
 namespace VacationRental.Services.Profiles;
 
-internal class BookingProfile : Profile
+public class BookingProfile : Profile
 {
     public BookingProfile()
     {

@@ -6,7 +6,7 @@ namespace VacationRental.Data.Repositories;
 
 public class BookingRepository : InMemoryRepository<Booking>, IBookingRepository
 {
-    public BookingRepository(IDictionary<int, Booking> entities, IMapper mapper) : base(entities, mapper)
+    public BookingRepository(IDictionary<int, Booking> entities) : base(entities)
     {
     }
 }

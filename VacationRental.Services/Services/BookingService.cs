@@ -10,19 +10,28 @@ namespace VacationRental.Services.Services;
 public class BookingService : IBookingService
 {
     private readonly IBookingRepository _bookingRepository;
+    private readonly IPreparationDaysRepository _preparationDaysRepository;
+    private readonly IRentalRepository _rentalRepository;
     private readonly IMapper _mapper;
     private readonly CommonValidator _commonValidator;
     private readonly BookingValidator _bookingValidator;
+    private readonly RentalValidator _rentalValidator;
 
     public BookingService(IBookingRepository bookingRepository,
         IMapper mapper,
         CommonValidator commonValidator,
-        BookingValidator bookingValidator)
+        BookingValidator bookingValidator,
+        RentalValidator rentalValidator,
+        IPreparationDaysRepository preparationDaysRepository, 
+        IRentalRepository rentalRepository)
     {
         _bookingRepository = bookingRepository;
         _mapper = mapper;
         _commonValidator = commonValidator;
         _bookingValidator = bookingValidator;
+        _rentalValidator = rentalValidator;
+        _preparationDaysRepository = preparationDaysRepository;
+        _rentalRepository = rentalRepository;
     }
 
     public async Task<BookingViewModel> GetBookingByIdAsync(int id)
@@ -44,25 +53,50 @@ public class BookingService : IBookingService
         if (!await _commonValidator.DoesRentalExists(model.RentalId))
             throw new ApplicationException("Rental not found");
 
-        for (var i = 0; i < model.Nights; i++)
-        {
-            var count = 0;
-            foreach (var booking in await _bookingRepository.GetAllAsync())
-            {
-                if (booking.RentalId == model.RentalId
-                    && (booking.Start <= model.Start.Date && booking.Start.AddDays(booking.Nights) > model.Start.Date)
-                    || (booking.Start < model.Start.AddDays(model.Nights) && booking.Start.AddDays(booking.Nights) >= model.Start.AddDays(model.Nights))
-                    || (booking.Start > model.Start && booking.Start.AddDays(booking.Nights) < model.Start.AddDays(model.Nights)))
-                {
-                    count++;
-                }
-            }
-            if (!await _bookingValidator.IsRentalAvailable(model.RentalId, count))
-                throw new ApplicationException("Not available");
-        }
+        var filteredBookings = (await _bookingRepository.GetAllAsync()).Where(x => x.RentalId == model.RentalId).ToList();
+        var filteredPreparationDays = (await _preparationDaysRepository.GetAllAsync())
+            .Where(x => x.RentalId == model.RentalId).ToList();
+        var rental = await _rentalRepository.GetByIdAsync(model.RentalId);
 
-        var newBooking = await _bookingRepository.InsertAsync(_mapper.Map<Booking>(model));
+        var busyUnits = await RentalUnitsOccupied(model, filteredBookings, filteredPreparationDays, rental);
+
+        if (!await _bookingValidator.IsRentalAvailable(rental, busyUnits.Count(x => x.Value)))
+            throw new ApplicationException("Not available");
+
+        var mappedBooking = _mapper.Map<Booking>(model);
+        var occupiedUnit = busyUnits.FirstOrDefault(x => !x.Value).Key;
+        mappedBooking.Unit = occupiedUnit;
+
+        var newBooking = await _bookingRepository.InsertAsync(mappedBooking);
+
+        var mappedPreparationDays = _mapper.Map<PreparationDays>(model);
+        _mapper.Map(rental, mappedPreparationDays);
+        mappedPreparationDays.Unit = occupiedUnit;
+
+        await _preparationDaysRepository.InsertAsync(mappedPreparationDays);
 
         return new ResourceIdViewModel { Id = newBooking.Id };
+    }
+
+    private async Task<Dictionary<int, bool>> RentalUnitsOccupied(BookingViewModel model, List<Booking> bookings, List<PreparationDays> preparationDays, Rental rental)
+    {
+        var busyUnits = new Dictionary<int, bool>();
+
+        foreach (var unit in Enumerable.Range(1, rental.Units))
+        {
+            busyUnits[unit] = false;
+        }
+
+        foreach (var booking in bookings)
+        {
+            if (await _rentalValidator.IsRentalUnitOccupied(model, booking)) busyUnits[booking.Unit] = true;
+        }
+
+        foreach (var prepDays in preparationDays)
+        {
+            if (await _rentalValidator.IsRentalUnitInPreparation(model, prepDays)) busyUnits[prepDays.Unit] = true;
+        }
+
+        return busyUnits;
     }
 }
